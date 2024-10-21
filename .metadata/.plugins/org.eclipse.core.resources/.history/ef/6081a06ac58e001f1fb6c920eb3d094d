@@ -1,0 +1,22 @@
+package com.naman.zoo.UserDTO;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+
+public class UpdateUserDTO {
+
+	private String firstName;
+    private String lastName;
+    private String street;
+    private String zipCode;
+    private Long cityId;    
+    private Long stateId;   // State selected by user
+    private Long countryId; // Country selected by user
+}

@@ -1,0 +1,163 @@
+package com.naman.zoo.services;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+import com.naman.zoo.UserDTO.UpdateUserDTO;
+import com.naman.zoo.UserDTO.UserResponse;
+import com.naman.zoo.entities.Address;
+import com.naman.zoo.entities.City;
+import com.naman.zoo.entities.Country;
+import com.naman.zoo.entities.State;
+import com.naman.zoo.entities.User;
+import com.naman.zoo.repositories.CityRepository;
+import com.naman.zoo.repositories.CountryRepository;
+import com.naman.zoo.repositories.StateRepository;
+import com.naman.zoo.repositories.UserRepository;
+
+import jakarta.transaction.Transactional;
+
+@Service
+public class UserService {
+
+	@Autowired
+	private UserRepository userRepository;
+	
+	@Autowired
+	private CityRepository cityRepository;
+	
+	@Autowired
+	private StateRepository stateRepository;
+	
+	@Autowired
+	private CountryRepository countryRepository;
+	
+	@Transactional
+	public User createUser(User user) {
+//		City city = cityRepository.findById(user.getAddress().getCity().getCityId()).get();
+		
+//		Address address = new Address();
+//		address.setStreet(user.getAddress().getStreet());
+//		address.setZipCode(user.getAddress().getZipCode());
+//		address.setCreatedBy(user.getAddress().getCreatedBy());
+//		address.setCity(city);
+//		user.setAddress(address);
+		return userRepository.save(user);
+	}
+	
+	
+	public List<User> getAllUser(){
+		List<User> users =  userRepository.findAll();
+		List<User> filteredusers = 	users.stream().filter(user -> !user.isArchieved()).collect(Collectors.toList());
+		return filteredusers;
+		
+	}
+	
+	public User getUserById(Long id) {
+		User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User Not Found"));
+		return user;
+	}
+	
+	
+	public User UpdateUserById(User user,  Long id) {
+	
+		User existingUser = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User Not Found By Id"));
+		System.out.println(existingUser);
+		
+		existingUser.setFirstName(user.getFirstName());
+		existingUser.setLastName(user.getLastName());
+		existingUser.setUserName(user.getUserName());
+		existingUser.setPassword(user.getPassword());
+		existingUser.setAddress(user.getAddress());
+		return userRepository.save(existingUser);
+		
+		
+	}
+	
+	public void deleteUserById(Long id) {
+		User deletedUser = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User Not Found By Id"));
+		deletedUser.setArchieved(!deletedUser.isArchieved());
+		userRepository.save(deletedUser);
+		
+	}
+	
+	public UserResponse LoginUser(String username, String password)
+	{
+		User user = userRepository.findByuserName(username);
+		if(user ==  null) {
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Wrong Username");
+		}
+//		String pass = user.getPassword();
+		
+		if (!user.getPassword().equals(password)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Wrong Password");
+        }		
+		return new UserResponse(user.getUserId(), user.getUserName());
+	}
+	
+	public User partialUpdateUser(Long userId, UpdateUserDTO dto) {
+        Optional<User> optionalUser = userRepository.findById(userId);
+
+        if (optionalUser.isPresent()) {
+            User user = optionalUser.get();
+            Address address = user.getAddress();
+
+            // Update user fields
+            if (dto.getFirstName() != null) {
+                user.setFirstName(dto.getFirstName());
+            }
+            if (dto.getLastName() != null) {
+                user.setLastName(dto.getLastName());
+            }
+
+            // Update address fields
+            if (dto.getStreet() != null) {
+                address.setStreet(dto.getStreet());
+            }
+            if (dto.getZipCode() != null) {
+                address.setZipCode(dto.getZipCode());
+            }
+
+            // Update city, state, and country
+            if (dto.getCityId() != null && dto.getStateId() != null && dto.getCountryId() != null) {
+                // Find country
+                Country country = countryRepository.findById(dto.getCountryId())
+                    .orElseThrow(() -> new RuntimeException("Country not found"));
+
+                // Find state and check if it belongs to the country
+                State state = stateRepository.findById(dto.getStateId())
+                    .orElseThrow(() -> new RuntimeException("State not found"));
+                
+                if (!state.getCountry().getCountryId().equals(country.getCountryId())) {
+                    throw new RuntimeException("State does not belong to the selected country");
+                }
+
+                // Find city and check if it belongs to the state
+                City city = cityRepository.findById(dto.getCityId())
+                    .orElseThrow(() -> new RuntimeException("City not found"));
+
+                if (!city.getState().getStateId().equals(state.getStateId())) {
+                    throw new RuntimeException("City does not belong to the selected state");
+                }
+
+                // Update address with new city (which indirectly updates state and country)
+                address.setCity(city);
+            }
+
+            userRepository.save(user);
+            return user;
+        } else {
+            throw new RuntimeException("User not found");
+        }
+    }
+
+	
+	
+}
+
