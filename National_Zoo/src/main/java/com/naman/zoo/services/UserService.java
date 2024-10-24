@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -45,6 +46,9 @@ public class UserService {
 //		address.setCreatedBy(user.getAddress().getCreatedBy());
 //		address.setCity(city);
 //		user.setAddress(address);
+//		BCryptPasswordEncoder bcrypt = new BCryptPasswordEncoder();
+//		String encryptedPassword =  bcrypt.encode(user.getPassword());
+//		user.setPassword(encryptedPassword);
 		return userRepository.save(user);
 	}
 	
@@ -69,7 +73,7 @@ public class UserService {
 		
 		existingUser.setFirstName(user.getFirstName());
 		existingUser.setLastName(user.getLastName());
-		existingUser.setUserName(user.getUserName());
+		existingUser.setUserName(user.getUsername());
 		existingUser.setPassword(user.getPassword());
 		existingUser.setAddress(user.getAddress());
 		return userRepository.save(existingUser);
@@ -86,16 +90,22 @@ public class UserService {
 	
 	public UserResponse LoginUser(String username, String password)
 	{
+//		BCryptPasswordEncoder bcrypt = new BCryptPasswordEncoder();
+	
 		User user = userRepository.findByuserName(username);
 		if(user ==  null) {
 			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Wrong Username");
 		}
-//		String pass = user.getPassword();
+		String pass = user.getPassword();
+//		if(!bcrypt.matches(password, user.getPassword()))
+		if(!pass.equals(password))
+		{
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Wrong Password");
+		}
 		
-		if (!user.getPassword().equals(password)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Wrong Password");
-        }		
-		return new UserResponse(user.getUserId(), user.getUserName());
+	
+//		return new UserResponse(user.getUserId(), user.getUserName());
+		return new UserResponse(user.getUserId(), user.getUsername());
 	}
 	
 	
@@ -144,59 +154,88 @@ public class UserService {
 //	    }
 //	}
 	
-	public User partialUpdateUser(Long id, UpdateUserDTO dto)
-	{
+//	public User partialUpdateUser(Long id, UpdateUserDTO dto)
+//	{
+//		Optional<User> optionalUser = userRepository.findById(id);
+//		if(optionalUser.isPresent())
+//		{
+//			User user = optionalUser.get();
+//			
+//			Address address = user.getAddress();
+//			
+//			if(dto.getFirstName() != null)
+//			{
+//				user.setFirstName(dto.getFirstName());
+//			}
+//			
+//			if(dto.getLastName() != null)
+//			{
+//				user.setLastName(dto.getLastName());
+//			}
+//			
+//			if(dto.getAddress() != null) {
+//				AddressDTO addressDto = dto.getAddress();
+//				
+//				if(addressDto.getStreet() != null)
+//				{
+//					address.setStreet(addressDto.getStreet());
+//				}
+//				
+//				if(addressDto.getZipCode() != null)
+//				{
+//					address.setZipCode(addressDto.getZipCode());
+//				}
+//				
+//				if(addressDto.getCity() != null && addressDto.getCity().getCityId() != null)
+//				{
+//					City city = cityRepository.findById(addressDto.getCity().getCityId()).orElseThrow(() -> new RuntimeException("City not found"));
+//					
+//					address.setCity(city);
+//					
+//				} 
+//				
+//				if (addressDto.getCreatedBy() != null) {
+//	                address.setCreatedBy(addressDto.getCreatedBy());
+//	            }
+//				
+//			}
+//			userRepository.save(user);
+//			return user;
+//			
+//		}
+//		else {
+//	        throw new RuntimeException("User not found");
+//	    }
+//   }
+	
+	public User partialUpdateUserById(Long id, UpdateUserDTO dto) {
 		Optional<User> optionalUser = userRepository.findById(id);
 		if(optionalUser.isPresent())
 		{
 			User user = optionalUser.get();
-			
 			Address address = user.getAddress();
-			
-			if(dto.getFirstName() != null)
-			{
-				user.setFirstName(dto.getFirstName());
-			}
-			
-			if(dto.getLastName() != null)
-			{
-				user.setLastName(dto.getLastName());
-			}
-			
-			if(dto.getAddress() != null) {
-				AddressDTO addressDto = dto.getAddress();
-				
-				if(addressDto.getStreet() != null)
-				{
-					address.setStreet(addressDto.getStreet());
-				}
-				
-				if(addressDto.getZipCode() != null)
-				{
-					address.setZipCode(addressDto.getZipCode());
-				}
-				
-				if(addressDto.getCity() != null && addressDto.getCity().getCityId() != null)
-				{
-					City city = cityRepository.findById(addressDto.getCity().getCityId()).orElseThrow(() -> new RuntimeException("City not found"));
-					
-					address.setCity(city);
-					
-				} 
-				
-				if (addressDto.getCreatedBy() != null) {
-	                address.setCreatedBy(addressDto.getCreatedBy());
-	            }
-				
-			}
-			userRepository.save(user);
-			return user;
-			
+		
+		
+		user.setFirstName(dto.getFirstName());
+		user.setLastName(dto.getLastName());
+		AddressDTO addressDTO = dto.getAddress();
+		address.setStreet(addressDTO.getStreet());
+		address.setZipCode(addressDTO.getZipCode());
+		
+		City city = cityRepository.findById(addressDTO.getCity().getCityId()).orElseThrow(() -> new RuntimeException("City is not Found"));
+		address.setCity(city);
+		userRepository.save(user);
+		return user;
+		
 		}
 		else {
 	        throw new RuntimeException("User not found");
 	    }
-   }
+		
+		
+	}
+	
+	
 		
 }
 
